@@ -832,10 +832,6 @@ impl EscrowContract {
             return Err(Error::AlreadyVoted);
         }
 
-        if commitment.vote != vote {
-            return Err(Error::AlreadyVoted); // Revert the duplicate we mistakenly added earlier
-        }
-
         // Construct preimage: variant_index + (optional payload) + salt
         let mut b = soroban_sdk::Bytes::new(&env);
         match vote {
@@ -1154,6 +1150,14 @@ impl EscrowContract {
         dispute.appeal_count += 1;
         dispute.status = DisputeStatus::Appealed;
         set_dispute(&env, dispute_id, &dispute);
+
+        // Reset the milestone to Pending so it can be re-submitted for validator votes
+        let mut milestone = get_milestone(&env, dispute.project_id, dispute.milestone_id)?;
+        milestone.status = MilestoneStatus::Pending;
+        milestone.approval_count = 0;
+        milestone.rejection_count = 0;
+        set_milestone(&env, dispute.project_id, dispute.milestone_id, &milestone);
+        clear_milestone_voters(&env, dispute.project_id, dispute.milestone_id);
 
         env.events()
             .publish((DISPUTE_APPEALED,), (dispute_id, appellant));

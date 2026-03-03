@@ -43,8 +43,6 @@ mod tests {
         EscrowContractClient::new(env, &env.register_contract(None, EscrowContract))
     }
 
-    // ====== NEW tests for Emergency Pause/Resume ======
-
     fn setup_with_admin(
         env: &Env,
     ) -> (Address, Address, Address, Vec<Address>, EscrowContractClient) {
@@ -69,7 +67,7 @@ mod tests {
     /// Default threshold used by all existing tests (67%).
     const DEFAULT_THRESHOLD: u32 = 6700;
 
-    // ── existing tests (approval_threshold argument added to every initialize call) ──
+    // ── existing tests ──
 
     #[test]
     fn test_initialize_escrow() {
@@ -451,7 +449,8 @@ mod tests {
         let juror_token = create_mock_token(&env);
         client.configure_dispute_token(&juror_token);
 
-        client.initialize(&1, &creator, &token, &validators, &DEFAULT_THRESHOLD);
+        // Use 10000 (100%) threshold — requires ALL 3 validators to approve
+        client.initialize(&1, &creator, &token, &validators, &10000);
 
         let v1 = validators.get(0).unwrap();
         let v2 = validators.get(1).unwrap();
@@ -468,31 +467,31 @@ mod tests {
         let description_hash = BytesN::from_array(&env, &[1u8; 32]);
         client.create_milestone(&1, &description_hash, &500);
 
-        let description_hash = BytesN::from_array(&env, &[1u8; 32]);
-        client.create_milestone(&1, &description_hash, &500);
-
         let proof_hash = BytesN::from_array(&env, &[9u8; 32]);
         client.submit_milestone(&1, &0, &proof_hash);
 
+        // With 100% threshold, 1 vote is not enough
         client.vote_milestone(&1, &0, &v1, &true);
         assert_eq!(
             client.get_milestone(&1, &0).status,
             MilestoneStatus::Submitted,
-            "one approval should not be enough with unanimous threshold"
+            "one approval should not be enough with 100% threshold"
         );
 
+        // With 100% threshold, 2 votes are still not enough
         client.vote_milestone(&1, &0, &v2, &true);
         assert_eq!(
             client.get_milestone(&1, &0).status,
             MilestoneStatus::Submitted,
-            "two approvals should not be enough with unanimous threshold"
+            "two approvals should not be enough with 100% threshold"
         );
 
+        // With 100% threshold, all 3 votes trigger approval
         client.vote_milestone(&1, &0, &v3, &true);
         assert_eq!(
             client.get_milestone(&1, &0).status,
             MilestoneStatus::Approved,
-            "all three approvals should trigger approval with unanimous threshold"
+            "all three approvals should trigger approval with 100% threshold"
         );
     }
 
@@ -507,6 +506,7 @@ mod tests {
         let juror_token = create_mock_token(&env);
         client.configure_dispute_token(&juror_token);
 
+        // Use DEFAULT_THRESHOLD (67%) — with 3 validators, 2 votes meets the threshold
         client.initialize(&1, &creator, &token, &validators, &DEFAULT_THRESHOLD);
 
         let v1 = validators.get(0).unwrap();
@@ -526,6 +526,7 @@ mod tests {
         let proof_hash = BytesN::from_array(&env, &[9u8; 32]);
         client.submit_milestone(&1, &0, &proof_hash);
 
+        // Two rejections to trigger dispute
         client.vote_milestone(&1, &0, &validators.get(0).unwrap(), &false);
         client.vote_milestone(&1, &0, &validators.get(1).unwrap(), &false);
 
@@ -545,7 +546,7 @@ mod tests {
             let juror_addr = assigned_jurors.get(i).unwrap();
 
             let mut b = soroban_sdk::Bytes::new(&env);
-            b.push_back(0); // ReleaseFunds
+            b.push_back(0); // RelFunds maps to variant byte 0 in reveal_vote
             b.append(&salt);
             let h = env.crypto().sha256(&b);
 
@@ -574,7 +575,10 @@ mod tests {
         let appellant = Address::generate(&env);
         client.file_appeal(&dispute_id, &appellant);
 
-        // We can do another commit-reveal phase for the 13 jurors
+        // Re-submit milestone so validators can vote on it again after appeal
+        client.submit_milestone(&1, &0, &proof_hash);
+
+        // With 67% threshold and 3 validators, 1 vote (33%) is not enough
         client.vote_milestone(&1, &0, &v1, &true);
         assert_eq!(
             client.get_milestone(&1, &0).status,
@@ -582,6 +586,7 @@ mod tests {
             "one approval should not meet the 67% threshold with 3 validators"
         );
 
+        // With 67% threshold and 3 validators, 2 votes (67%) meets the threshold
         client.vote_milestone(&1, &0, &v2, &true);
         assert_eq!(
             client.get_milestone(&1, &0).status,
@@ -589,7 +594,6 @@ mod tests {
             "two approvals should meet the 67% threshold with 3 validators"
         );
     }
-
 
     // ====== NEW tests for Emergency Pause/Resume ======
     #[test]
@@ -632,7 +636,7 @@ mod tests {
         env.mock_all_auths();
         let (admin, _, _, _, client) = setup_with_admin(&env);
 
-        client.deposit(&1, &1000); // deposit before pausing
+        client.deposit(&1, &1000);
         client.pause(&admin);
 
         let description_hash = BytesN::from_array(&env, &[1u8; 32]);
@@ -685,7 +689,6 @@ mod tests {
 
         client.pause(&admin);
 
-        // Try to resume only 1 hour later — well within the 24hr lock
         env.ledger().set_timestamp(1000 + 3600);
         let result = client.try_resume(&admin);
         assert!(result.is_err(), "resume should fail before time delay expires");
@@ -700,7 +703,6 @@ mod tests {
 
         client.pause(&admin);
 
-        // Advance time past the 24hr delay
         env.ledger().set_timestamp(1000 + 86400 + 1);
         let result = client.try_resume(&admin);
         assert!(result.is_ok(), "resume should succeed after time delay");
@@ -718,7 +720,6 @@ mod tests {
         env.ledger().set_timestamp(1000 + 86400 + 1);
         client.resume(&admin);
 
-        // deposit should work again
         let result = client.try_deposit(&1, &500);
         assert!(result.is_ok(), "deposit should work after resume");
     }
@@ -780,7 +781,6 @@ mod tests {
         client.schedule_upgrade(&admin, &wasm_hash);
         client.pause(&admin);
 
-        // Only 1 hour later — before 48h time-lock
         env.ledger().set_timestamp(1000 + 3600);
         let result = client.try_execute_upgrade(&admin);
         assert!(result.is_err(), "execute_upgrade should fail before 48h");
