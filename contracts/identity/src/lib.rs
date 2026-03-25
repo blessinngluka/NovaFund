@@ -10,6 +10,7 @@ pub struct IdentityRecord {
     pub is_verified: bool,
     pub verified_at: u64,
     pub proof_hash: soroban_sdk::BytesN<32>,
+    pub tier: u32,
 }
 
 #[contracttype]
@@ -39,6 +40,7 @@ impl IdentityContract {
         jurisdiction: Jurisdiction,
         proof: Bytes,
         _public_inputs: Bytes,
+        tier: u32,
     ) {
         user.require_auth();
 
@@ -54,6 +56,7 @@ impl IdentityContract {
             is_verified: true,
             verified_at: env.ledger().timestamp(),
             proof_hash: env.crypto().sha256(&proof).into(),
+            tier,
         };
 
         env.storage()
@@ -63,12 +66,18 @@ impl IdentityContract {
 
     /// Checks if a user is verified for a specific jurisdiction
     pub fn is_verified(env: Env, user: Address, jurisdiction: Jurisdiction) -> bool {
+        Self::get_tier(env, user, jurisdiction) > 0
+    }
+
+    /// Checks the KYC tier level for a user for a specific jurisdiction
+    pub fn get_tier(env: Env, user: Address, jurisdiction: Jurisdiction) -> u32 {
         let key = DataKey::Verification(user, jurisdiction);
         if let Some(record) = env.storage().persistent().get::<_, IdentityRecord>(&key) {
-            record.is_verified
-        } else {
-            false
+            if record.is_verified {
+                return record.tier;
+            }
         }
+        0
     }
 
     /// Admin function to revoke verification
