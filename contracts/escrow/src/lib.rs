@@ -59,10 +59,8 @@ impl EscrowContract {
         token: Address,
         validators: Vec<Address>,
         approval_threshold: u32,
- vesting-contract-for-creator-fund
         vesting_duration: u64,
         management_fee_bps: u32,
-main
     ) -> Result<(), Error> {
 
         creator.require_auth();
@@ -96,10 +94,8 @@ main
             released_amount: 0,
             validators,
             approval_threshold,
-vesting-contract-for-creator-fund
             vesting_duration,
             management_fee_bps,
-          main
         };
 
 
@@ -1273,7 +1269,6 @@ vesting-contract-for-creator-fund
         storage::get_pending_upgrade(&env)
     }
 
- vesting-contract-for-creator-fund
     /// Claim unlocked funds from a vesting schedule
     pub fn claim_unlocked(
         env: Env,

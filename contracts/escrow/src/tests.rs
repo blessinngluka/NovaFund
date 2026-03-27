@@ -1,4 +1,3 @@
- vesting-contract-for-creator-fund
 #![cfg(test)]
 
 mod tests {

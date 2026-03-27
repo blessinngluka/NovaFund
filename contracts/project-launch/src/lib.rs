@@ -53,6 +53,7 @@ pub struct Project {
     pub status: ProjectStatus,
     pub metadata_hash: Bytes,
     pub total_raised: i128,
+    pub vesting_duration: u64,
     pub created_at: u64,
 }
 
@@ -116,6 +117,7 @@ impl ProjectLaunch {
         deadline: u64,
         token: Address,
         metadata_hash: Bytes,
+        vesting_duration: u64,
         jurisdictions: Option<soroban_sdk::Vec<Jurisdiction>>,
     ) -> Result<u64, Error> {
         if Self::get_is_paused(env.clone()) {
@@ -165,6 +167,7 @@ impl ProjectLaunch {
             status: ProjectStatus::Active,
             metadata_hash,
             total_raised: 0,
+            vesting_duration,
             created_at: current_time,
         };
 
@@ -698,6 +701,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
         assert!(result.is_err());
@@ -710,6 +714,7 @@ mod tests {
             &too_soon_deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
         assert!(result.is_err());
@@ -744,6 +749,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -887,6 +893,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
     }
@@ -920,6 +927,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -980,6 +988,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -1028,6 +1037,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -1088,6 +1098,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -1159,6 +1170,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -1200,6 +1212,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
 
@@ -1254,6 +1267,7 @@ mod tests {
             &deadline,
             &token,
             &metadata_hash,
+            &3600, // Added vesting duration (1 hour)
             &None,
         );
         assert!(
