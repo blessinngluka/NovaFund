@@ -12,6 +12,13 @@ import { IndexerModule } from './indexer/indexer.module';
 import { NotificationModule } from './notification/notification.module';
 import { BridgeModule } from './bridge/bridge.module';
 import { YieldModule } from './yield/yield.module';
+import { RelayModule } from './relay/relay.module';
+import { VerificationModule } from './verification/verification.module';
+import { RedisModule } from './redis/redis.module';
+import { ProjectModule } from './project/project.module';
+import { StellarModule } from './stellar/stellar.module';
+import { OracleModule } from './oracle/oracle.module';
+import { GraphQLRateLimitModule } from './graphql/graphql-rate-limit.module';
 
 @Module({
   imports: [
@@ -20,17 +27,24 @@ import { YieldModule } from './yield/yield.module';
       envFilePath: '.env',
       validate: validateEnv,
     }),
+    RedisModule,
+    StellarModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
       playground: true,
     }),
+    GraphQLRateLimitModule,
     ReputationModule,
     DatabaseModule,
     IndexerModule,
     NotificationModule,
     BridgeModule,
     YieldModule,
+    RelayModule,
+    VerificationModule,
+    ProjectModule,
+    OracleModule,
   ],
   controllers: [AppController, UserController],
   providers: [AppService],

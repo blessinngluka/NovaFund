@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, validateSync } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 enum Environment {
   Development = 'development',
@@ -39,6 +39,18 @@ class EnvironmentVariables {
   REDIS_PORT: number;
 
   @IsString()
+  REDIS_PASSWORD: string;
+
+  @IsNumber()
+  REDIS_DB: number;
+
+  @IsNumber()
+  REDIS_DEFAULT_TTL: number;
+
+  @IsNumber()
+  REDIS_MAX_KEYS: number;
+
+  @IsString()
   JWT_SECRET: string;
 
   @IsNumber()
@@ -51,7 +63,31 @@ class EnvironmentVariables {
   STELLAR_RPC_URL: string;
 
   @IsString()
+  STELLAR_BACKUP_RPC_URLS: string;
+
+  @IsNumber()
+  RPC_CIRCUIT_BREAKER_FAILURE_THRESHOLD: number;
+
+  @IsNumber()
+  RPC_CIRCUIT_BREAKER_RECOVERY_TIMEOUT: number;
+
+  @IsNumber()
+  RPC_CIRCUIT_BREAKER_MONITORING_PERIOD: number;
+
+  @IsNumber()
+  RPC_HEALTH_CHECK_INTERVAL: number;
+
+  @IsNumber()
+  RPC_REQUEST_TIMEOUT: number;
+
+  @IsString()
+  STELLAR_HORIZON_URL: string;
+
+  @IsString()
   STELLAR_NETWORK_PASSPHRASE: string;
+
+  @IsString()
+  STELLAR_SPONSOR_SECRET_KEY: string;
 
   @IsString()
   PROJECT_LAUNCH_CONTRACT_ID: string;
@@ -64,6 +100,27 @@ class EnvironmentVariables {
 
   @IsNumber()
   INDEXER_REORG_DEPTH_THRESHOLD: number;
+
+  // Price Oracle (all optional — public endpoints work without keys)
+  @IsOptional()
+  @IsString()
+  BINANCE_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  KRAKEN_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  COINBASE_API_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  ORACLE_SUPPORTED_TOKENS?: string;
+
+  @IsOptional()
+  @IsNumber()
+  PRICE_FETCH_INTERVAL_MINUTES?: number;
 }
 
 export function validateEnv(config: Record<string, unknown>) {
