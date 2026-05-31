@@ -214,6 +214,30 @@ impl ReputationContract {
         Self::get_profile_internal(&env, &user)
     }
 
+    /// Get a user's reputation score
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user
+    ///
+    /// # Returns
+    /// * `i128` - The user's reputation score or default if not found
+    /// Get a user's reputation score
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `user` - The address of the user
+    ///
+    /// # Returns
+    /// * `i128` - The user's reputation score or default if not found
+    pub fn get_score(env: Env, user: Address) -> i128 {
+        if let Ok(profile) = Self::get_profile_internal(&env, &user) {
+            profile.score
+        } else {
+            REPUTATION_START
+        }
+    }
+
     /// Get the admin address
     ///
     /// # Arguments
@@ -254,6 +278,8 @@ impl ReputationContract {
         false
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {

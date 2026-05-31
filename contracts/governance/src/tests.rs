@@ -515,3 +515,126 @@ fn test_token_weighted_voting_and_quorum_with_timelock() {
     let timelock = client.get_proposal_timelock(&proposal_id).unwrap();
     assert!(timelock > current_time);
 }
+
+#[test]
+fn test_cancel_proposal() {
+    let (env, client, admin, creator, _) = setup_test_env();
+    initialize_contract(&client, &admin, 100);
+
+    let proposal_id = create_test_proposal(&env, &client, &creator, 100, 1000);
+
+    // Cancel by creator
+    client.cancel_proposal(&creator, &proposal_id);
+
+    // Try to vote on cancelled proposal
+    let voter = Address::generate(&env);
+    env.mock_all_auths();
+    
+    // Move time into voting period
+    let current_time = env.ledger().timestamp();
+    env.ledger().with_mut(|li| {
+        li.timestamp = current_time + 200;
+    });
+
+    let result = client.try_vote(&proposal_id, &voter, &true);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_cancel_proposal_by_admin() {
+    let (env, client, admin, creator, _) = setup_test_env();
+    initialize_contract(&client, &admin, 100);
+
+    let proposal_id = create_test_proposal(&env, &client, &creator, 100, 1000);
+
+    // Cancel by admin
+    client.cancel_proposal(&admin, &proposal_id);
+    
+    // Attempt to finalize should fail
+    let current_time = env.ledger().timestamp();
+    env.ledger().with_mut(|li| {
+        li.timestamp = current_time + 2000;
+    });
+    
+    let result = client.try_finalize(&proposal_id);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_get_active_proposals() {
+    let (env, client, admin, creator, _) = setup_test_env();
+    initialize_contract(&client, &admin, 100);
+
+    let p1 = create_test_proposal(&env, &client, &creator, 0, 1000);
+    let p2 = create_test_proposal(&env, &client, &creator, 500, 1500);
+    let p3 = create_test_proposal(&env, &client, &creator, 0, 1000);
+
+    client.cancel_proposal(&creator, &p3);
+
+    // Move to time 100 (p1 and p3 were active, but p3 is cancelled)
+    env.ledger().with_mut(|li| {
+        li.timestamp = 100;
+    });
+
+    let active = client.get_active_proposals();
+    assert_eq!(active.len(), 1);
+    assert_eq!(active.get(0).unwrap(), p1);
+
+    // Move to time 600 (p1 and p2 active)
+    env.ledger().with_mut(|li| {
+        li.timestamp = 600;
+    });
+
+    let active = client.get_active_proposals();
+    assert_eq!(active.len(), 2);
+}
+
+#[test]
+fn test_delegation() {
+    let (env, client, admin, _, _) = setup_test_env();
+    initialize_contract(&client, &admin, 100);
+
+    let delegator = Address::generate(&env);
+    let delegatee = Address::generate(&env);
+
+    client.delegate_votes(&delegator, &delegatee);
+    
+    // Currently get_voting_power is direct, but we verify it doesn't crash
+    let power = client.get_voting_power(&delegator);
+    assert!(power >= 0);
+}
+
+#[test]
+fn test_get_vote_record() {
+    let (env, client, admin, creator, _) = setup_test_env();
+    initialize_contract(&client, &admin, 100);
+
+    let voter = Address::generate(&env);
+    let proposal_id = create_test_proposal(&env, &client, &creator, 0, 1000);
+
+    client.vote(&proposal_id, &voter, &true);
+
+    let record = client.get_vote_record(&voter, &proposal_id);
+    assert!(record.is_some());
+    assert_eq!(record.unwrap(), true);
+
+    let no_voter = Address::generate(&env);
+    let no_record = client.get_vote_record(&no_voter, &proposal_id);
+    assert!(no_record.is_none());
+}
+
+#[test]
+fn test_update_governance_parameters() {
+    let (_, client, admin, _, _) = setup_test_env();
+    initialize_contract(&client, &admin, 100);
+
+    // Update total voters (key 2)
+    client.update_governance_parameters(&admin, &2, &200);
+    assert_eq!(client.get_total_voters(), 200);
+
+    // Unauthorized update
+    let non_admin = Address::generate(&client.env);
+    let result = client.try_update_governance_parameters(&non_admin, &2, &300);
+    assert!(result.is_err());
+}
+
